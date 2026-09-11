@@ -17,13 +17,13 @@
 # if someone edited a repo's copy directly instead of editing the template.
 #
 # One target per call -- repos drive their own list from a render-installers.sh that
-# loops and calls this. The stamping itself is generic and lives in stamp-template.sh;
-# everything here is installer-specific policy: syntax-checking the output.
+# loops and calls this. The stamping itself is generic and lives in common/; everything
+# here is installer-specific policy: syntax-checking the output.
 set -uo pipefail
 
 # Resolve relative to this script, so the repo works no matter where it is cloned.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STAMP="$DIR/stamp-template.sh"
+STAMP="$DIR/../common/stamp-template.sh"
 
 usage() { sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; }
 

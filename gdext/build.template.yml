@@ -1,7 +1,7 @@
 name: build
 
 # Shared GDExtension addon workflow, synced byte-identical from
-# build.template.yml in the install_scripts repo (render-gdext.sh --check gates
+# build.template.yml in the sh-templates submodule (render-gdext.sh --check gates
 # drift). Edit the template, not this copy.
 #
 # Assumes the repo convention: SConstruct at the root, godot-cpp submodule,

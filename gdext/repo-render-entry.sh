@@ -7,18 +7,19 @@
 # --check is what you want in a pre-tag gate: it fails if a shared file was edited
 # directly instead of editing the shared template.
 #
-# The rendering itself lives in the install_scripts repo (gdext/render-target.sh).
-# Everything here is repo-local policy: which targets to render.
+# The rendering itself lives in the pinned sh-templates submodule
+# (gdext/render-target.sh). Everything here is repo-local policy: which targets
+# to render.
 #
 # Bootstrap for a new repo: commit a package.sh containing only its config block
 # (ADDON_SRC/ADDON_DEST/VERSION_FILE) and the "# ---- end config ----" marker, then
 # run this once to receive the body.
 set -uo pipefail
 
-cd "$(dirname "$0")" || exit 1
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT" || exit 1
 
-INSTALL_SCRIPTS_DIR="${INSTALL_SCRIPTS_DIR:-$HOME/main/install_scripts}"
-RENDERER="$INSTALL_SCRIPTS_DIR/gdext/render-target.sh"
+RENDERER="$ROOT/sh-templates/gdext/render-target.sh"
 
 TARGETS=(
   "package.sh"
@@ -30,6 +31,12 @@ case "${1:-}" in
   -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
   *) echo "unknown option: $1" >&2; exit 2 ;;
 esac
+
+if [[ ! -x "$RENDERER" ]]; then
+  echo "$(basename "$0"): required submodule renderer not found: $RENDERER" >&2
+  echo "Initialize it with: git submodule update --init sh-templates" >&2
+  exit 1
+fi
 
 # Rendering is in place: the target supplies its own config block and receives the
 # result. Accumulate failure so --check can gate a preflight -- a single drifted or

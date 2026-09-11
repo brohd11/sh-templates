@@ -17,12 +17,12 @@
 #
 # One target per call -- repos drive their own list from a render-gdext.sh that
 # loops and calls this. The stamping itself is generic and lives in
-# simple/stamp-template.sh; everything here is gdext-specific policy.
+# common/stamp-template.sh; everything here is gdext-specific policy.
 set -uo pipefail
 
 # Resolve relative to this script, so the repo works no matter where it is cloned.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STAMP="$DIR/../simple/stamp-template.sh"
+STAMP="$DIR/../common/stamp-template.sh"
 
 usage() { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; }
 

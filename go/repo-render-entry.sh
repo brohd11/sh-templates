@@ -7,15 +7,15 @@
 # --check is what you want in a pre-tag gate: it fails if an installer was edited
 # directly instead of editing the shared template.
 #
-# The stamping itself lives in the install_scripts repo (simple/render-installer.sh).
-# Everything here is installer-specific policy: which targets to render.
+# The stamping itself lives in the pinned sh-templates submodule
+# (go/render-installer.sh). Everything here is installer-specific policy: which
+# targets to render.
 set -uo pipefail
 
-cd "$(dirname "$0")" || exit 1
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT" || exit 1
 
-INSTALL_SCRIPTS_DIR="${INSTALL_SCRIPTS_DIR:-$HOME/main/install_scripts}"
-STAMPER="$INSTALL_SCRIPTS_DIR/simple/render-installer.sh"
-
+STAMPER="$ROOT/sh-templates/go/render-installer.sh"
 
 TARGETS=(
   "install.sh"
@@ -27,6 +27,13 @@ case "${1:-}" in
   -h|--help) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
   *) echo "unknown option: $1" >&2; exit 2 ;;
 esac
+
+# Fail up front with the path rather than once per target midway through the loop.
+if [[ ! -x "$STAMPER" ]]; then
+  echo "$(basename "$0"): required submodule renderer not found: $STAMPER" >&2
+  echo "Initialize it with: git submodule update --init sh-templates" >&2
+  exit 1
+fi
 
 # Rendering is in place: the target supplies its own config block and receives the
 # result, so IN and OUT are the same path. Accumulate failure so --check can gate a
