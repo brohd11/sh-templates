@@ -12,8 +12,8 @@
 # to render.
 #
 # Bootstrap for a new repo: commit a package.sh containing only its config block
-# (ADDON_SRC/ADDON_DEST/VERSION_FILE) and the "# ---- end config ----" marker, then
-# run this once to receive the body.
+# (ADDON_SRC/ADDON_DEST/VERSION_FILE/RELEASE_NAME) and the
+# "# ---- end config ----" marker, then run this once to receive the body.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

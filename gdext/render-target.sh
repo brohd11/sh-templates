@@ -9,8 +9,8 @@
 #   package.sh   body stamped from package.template.sh, the repo's own config block
 #                (everything through "# ---- end config ----") preserved; sh -n
 #                syntax-checked, plus dash -n when dash is installed
-#   build.yml    byte-identical copy of build.template.yml; a workflow has no
-#                per-repo config (names come from github.event.repository.name)
+#   build.yml    byte-identical copy of build.template.yml; package.sh owns the
+#                per-repo archive name, so the workflow needs no config
 #
 # --check never writes. It is what you want in a preflight or pre-tag gate: it fails
 # if someone edited a repo's copy directly instead of editing the template.

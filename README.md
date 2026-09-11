@@ -17,8 +17,9 @@ script. Never edit below the marker in a consumer repo; `--check` gates the drif
 - `go/` - the Go-binary domain: `install.sh` / `install.ps1` templates that download a
   release asset from GitHub, install to `BIN_DIR`, and optionally fix PATH (with a
   prompt, safely under `curl | sh`).
-- `gdext/` - `package.sh` (assemble a Godot addon zip from `bin/` + addon source) and
-  `build.yml` (matrix scons build for macOS/Linux/Windows, package, release on tag).
+- `gdext/` - `package.sh` (stage a Godot addon from `bin/` + addon source and create
+  its release zip) and `build.yml` (matrix scons build for macOS/Linux/Windows,
+  package, release on tag).
 
 ## Using in a consumer repo
 
@@ -35,9 +36,11 @@ Then:
   create `install.sh`/`install.ps1` containing just a config block and the marker, and
   run `./render-installers.sh` to receive the bodies.
 - GDExtension addon: copy `gdext/repo-render-entry.sh` in as `render-gdext.sh`,
-  bootstrap `package.sh` the same way (`ADDON_SRC`/`ADDON_DEST`/`VERSION_FILE`
-  config block + marker), and run `./render-gdext.sh`. The workflow needs no config;
-  zip and artifact names come from the GitHub repo name.
+  bootstrap `package.sh` the same way
+  (`ADDON_SRC`/`ADDON_DEST`/`VERSION_FILE`/`RELEASE_NAME` config block + marker), and
+  run `./render-gdext.sh`. `build/` is the staged Godot project tree and `dist/`
+  contains the canonical `$RELEASE_NAME-v<VERSION>.zip`; the byte-identical workflow
+  uploads that zip and publishes it on tag pushes.
 
 Both entry scripts take `--check` to verify instead of write; use it in a pre-tag
 gate or CI to fail on drift. A fresh clone needs
