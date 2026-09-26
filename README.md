@@ -10,7 +10,7 @@ Installers, package scripts, and makefiles are split at a `# ---- end config ---
 copy owns the config block above the marker, this repo owns the body below it. To
 propagate a change, edit the template here, then run the consumer repo's render
 script. Never edit below the marker in a consumer repo; `--check` gates the drift.
-Workflows have no per-repo config and are copied byte-identically from their templates.
+Workflows and `cliff.toml` are copied byte-identically from their templates.
 
 ## Layout
 
@@ -19,8 +19,9 @@ Workflows have no per-repo config and are copied byte-identically from their tem
 - `go/` - the Go-binary domain: `install.sh` / `install.ps1` templates that download a
   release asset from GitHub, install to `BIN_DIR`, and optionally fix PATH (with a
   prompt, safely under `curl | sh`), plus a shared `makefile` and `test.yml` /
-  `release.yml` workflows. Tests run on Linux and Windows; releases run `make package`
-  and upload `dist/*` on version tags. `render-target.sh` handles every Go file;
+  `release.yml` workflows and a shared `cliff.toml`. Tests run on Linux and Windows;
+  releases run `make package`, generate git-cliff notes, and upload `dist/*` on
+  version tags. `render-target.sh` handles every Go file;
   `templates/` holds templates and the entry script copied into consumer repos,
   while `utils/` holds the local-install function library.
 - `gdext/` - `package.sh` (stage a Godot addon from `bin/` + addon source and create
@@ -38,11 +39,11 @@ git submodule add https://github.com/brohd11/sh-templates.git
 
 Then:
 
-- Go installers, makefile, and workflows: copy `go/templates/repo-render-entry.sh` as `render-go.sh`.
+- Go installers, makefile, workflows, and changelog config: copy `go/templates/repo-render-entry.sh` as `render-go.sh`.
   Create `install.sh`/`install.ps1` containing their config blocks and the marker.
   Create `makefile` with `APP_NAME` (matching the installer's `BINARY`), `VERSION_PKG`
   (`main` or the import path declaring `version`), `PLATFORMS`, and the config marker.
-  Run `./render-go.sh` to render all five targets. Libraries can
+  Run `./render-go.sh` to render all six targets. Libraries can
   select only `.github/workflows/test.yml` in the entry script's `TARGETS` array.
   For a repo tracking `Makefile`, use that exact spelling in `TARGETS`; the renderer
   accepts both `makefile` and `Makefile`.
@@ -58,6 +59,36 @@ Then:
 All entry scripts take `--check` to verify instead of write; use it in a pre-tag
 gate or CI to fail on drift. A fresh clone needs
 `git submodule update --init sh-templates` before rendering.
+
+## Go release notes
+
+Version tags are chosen and pushed manually. Release CI uses git-cliff **v2.14.2**
+to generate the checked-out tag's notes and passes them to the GitHub release body.
+It needs the rendered `cliff.toml` committed alongside the workflow, but does not
+commit a `CHANGELOG.md`. Notes are generated outside `dist/`, so they are not an
+extra downloadable asset. Generation errors stop publication.
+
+Edit `go/templates/cliff.template.toml`, then run the renderer to propagate policy
+changes. Notes contain Breaking Changes, Features (`feat:`), Bug Fixes (`fix:`),
+and Performance (`perf:`), with scopes preserved. Breaking changes marked with
+`!` or a `BREAKING CHANGE:` footer are included regardless of type, including their
+breaking-change descriptions. Routine internal work and nonconventional messages
+are omitted without failing the release. If nothing qualifies, the notes say
+"No user-facing changes recorded."
+
+With git-cliff v2.14.2 installed, preview from a consumer repository:
+
+```sh
+# Before tagging: changes since the last version tag.
+git-cliff --config cliff.toml --unreleased --strip header
+
+# At a checked-out release tag: the same notes CI will publish.
+git-cliff --config cliff.toml --current --strip header
+```
+
+Release boundaries use reachable `v*` tags. `--current` keeps reruns of older tags
+on that release even when newer tags exist. The first version tag includes all
+qualifying history through that tag. Keep the workflow's full-history checkout.
 
 ## Installing a local Go build
 

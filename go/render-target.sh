@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Render one shared Go installer, workflow, or makefile.
+# Render one shared Go installer, workflow, makefile, or changelog config.
 #
 #   render-target.sh TARGET            rewrite TARGET, report updated/unchanged
 #   render-target.sh --check TARGET    verify TARGET matches; exit 1 on drift
 #
 # TARGET's basename selects the template:
-#   test.yml / release.yml   byte-identical workflow copies
+#   test.yml / release.yml / cliff.toml   byte-identical copies
 #   makefile / Makefile      shared body with the target's config block preserved
 #   install.sh / install.ps1 shared installer body, with syntax checks
 #
-# TARGET is relative to the caller's cwd. Workflows can be created from scratch;
+# TARGET is relative to the caller's cwd. Copies can be created from scratch;
 # stamped files need their config and the "# ---- end config ----" marker first.
 # Exit: 0 success, 1 drift/missing target or render failure, 2 invalid usage/structure.
 set -uo pipefail
@@ -36,14 +36,15 @@ TARGET=$1
 case "$(basename "$TARGET")" in
   install.sh)  KIND=sh; TEMPLATE="$DIR/templates/install.template.sh" ;;
   install.ps1) KIND=ps1; TEMPLATE="$DIR/templates/install.template.ps1" ;;
-  test.yml)    KIND=workflow; TEMPLATE="$DIR/templates/test.template.yml" ;;
-  release.yml) KIND=workflow; TEMPLATE="$DIR/templates/release.template.yml" ;;
+  test.yml)    KIND=copy; TEMPLATE="$DIR/templates/test.template.yml" ;;
+  release.yml) KIND=copy; TEMPLATE="$DIR/templates/release.template.yml" ;;
+  cliff.toml)  KIND=copy; TEMPLATE="$DIR/templates/cliff.template.toml" ;;
   makefile|Makefile) KIND=makefile; TEMPLATE="$DIR/templates/makefile.template" ;;
   *) echo "error: no render policy for '$TARGET'" >&2; exit 2 ;;
 esac
 
 [ -f "$TEMPLATE" ] || { echo "error: $TEMPLATE not found" >&2; exit 1; }
-if [ "$KIND" != workflow ] && [ ! -x "$STAMP" ]; then
+if [ "$KIND" != copy ] && [ ! -x "$STAMP" ]; then
   echo "error: $STAMP not found or not executable" >&2
   exit 1
 fi
@@ -58,13 +59,13 @@ if [ ! -f "$TARGET" ]; then
     echo "MISSING"
     exit 1
   fi
-  if [ "$KIND" != workflow ]; then
+  if [ "$KIND" != copy ]; then
     echo "MISSING -- create a config block ending with '# ---- end config ----' first"
     exit 1
   fi
 fi
 
-if [ "$KIND" = workflow ]; then
+if [ "$KIND" = copy ]; then
   if [ -f "$TARGET" ] && cmp -s "$TEMPLATE" "$TARGET"; then
     echo "unchanged"
     exit 0

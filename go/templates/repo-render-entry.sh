@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render this repo's shared Go installers, makefile, and workflows.
+# Render this repo's shared Go installers, makefile, workflows, and changelog config.
 #
 #   ./render-go.sh           rewrite each target, report updated/unchanged
 #   ./render-go.sh --check   verify each matches; exit 1 on drift
@@ -20,6 +20,7 @@ TARGETS=(
   "makefile"
   ".github/workflows/test.yml"
   ".github/workflows/release.yml"
+  "cliff.toml"
 )
 
 case "${1:-}" in
