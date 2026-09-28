@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# Render one shared Go installer, workflow, makefile, or changelog config.
+# Render one shared macOS app installer, release workflow, or changelog config.
 #
 #   render-target.sh TARGET            rewrite TARGET, report updated/unchanged
 #   render-target.sh --check TARGET    verify TARGET matches; exit 1 on drift
 #
 # TARGET's basename selects the template:
-#   test.yml / release.yml / cliff.toml   byte-identical copies
-#   makefile / Makefile      shared body with the target's config block preserved
-#   install.sh / install.ps1 shared installer body, with syntax checks
+#   release.yml / cliff.toml   byte-identical copies
+#   install.sh                 shared installer body with the target's config block
+#                              preserved; sh -n (and dash -n when available) checked
 #
 # TARGET is relative to the caller's cwd. Copies can be created from scratch;
-# stamped files need their config and the "# ---- end config ----" marker first.
+# install.sh needs its config and the "# ---- end config ----" marker first.
 # Exit: 0 success, 1 drift/missing target or render failure, 2 invalid usage/structure.
 set -uo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STAMP="$DIR/../common/stamp-template.sh"
 
-usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; }
 
 CHECK=0
 case "${1:-}" in
@@ -35,11 +35,8 @@ TARGET=$1
 
 case "$(basename "$TARGET")" in
   install.sh)  KIND=sh; TEMPLATE="$DIR/templates/install.template.sh" ;;
-  install.ps1) KIND=ps1; TEMPLATE="$DIR/templates/install.template.ps1" ;;
-  test.yml)    KIND=copy; TEMPLATE="$DIR/templates/test.template.yml" ;;
   release.yml) KIND=copy; TEMPLATE="$DIR/templates/release.template.yml" ;;
   cliff.toml)  KIND=copy; TEMPLATE="$DIR/../common/templates/cliff.template.toml" ;;
-  makefile|Makefile) KIND=makefile; TEMPLATE="$DIR/templates/makefile.template" ;;
   *) echo "error: no render policy for '$TARGET'" >&2; exit 2 ;;
 esac
 
@@ -49,7 +46,7 @@ if [ "$KIND" != copy ] && [ ! -x "$STAMP" ]; then
   exit 1
 fi
 
-printf '  %-40s ' "$TARGET"
+printf '  %-48s ' "$TARGET"
 if [ -e "$TARGET" ] && [ ! -f "$TARGET" ]; then
   echo "ERROR -- target is not a regular file" >&2
   exit 1
@@ -82,37 +79,15 @@ if [ "$KIND" = copy ]; then
   exit 0
 fi
 
-# Installers need syntax validation in addition to the common config/body stamp.
-# PowerShell parsing is optional locally; preserve literal paths through the environment.
 check_syntax() {
-  local syntax_target=$1
-  case "$KIND" in
-    sh)
-      sh -n "$syntax_target" || return 1
-      if command -v dash >/dev/null 2>&1; then dash -n "$syntax_target" || return 1; fi
-      ;;
-    ps1)
-      command -v pwsh >/dev/null 2>&1 || return 0
-      INSTALLER_PARSE_PATH="$syntax_target" pwsh -NoProfile -NonInteractive -Command '
-        $ErrorActionPreference = "Stop"
-        $errors = $null
-        [void][System.Management.Automation.Language.Parser]::ParseFile(
-          (Resolve-Path -LiteralPath $env:INSTALLER_PARSE_PATH).Path, [ref]$null, [ref]$errors)
-        if ($errors) { $errors | ForEach-Object { $_.ToString() }; exit 1 }
-      ' || return 1
-      ;;
-  esac
+  sh -n "$1" || return 1
+  if command -v dash >/dev/null 2>&1; then dash -n "$1" || return 1; fi
   return 0
 }
 
 if ! check_syntax "$TEMPLATE"; then
   echo "ERROR -- $TEMPLATE fails its syntax check" >&2
   exit 1
-fi
-
-SUFFIX=""
-if [ "$KIND" = ps1 ] && ! command -v pwsh >/dev/null 2>&1; then
-  SUFFIX=" (unchecked: no pwsh)"
 fi
 
 if [ "$CHECK" -eq 1 ]; then set -- --check; else set --; fi
@@ -125,8 +100,8 @@ if [ "$status" -le 1 ] && ! check_syntax "$TARGET"; then
   exit 1
 fi
 case "$status" in
-  0) echo "$out$SUFFIX" ;;
-  1) echo "DRIFT (body differs from $TEMPLATE)$SUFFIX" ;;
+  0) echo "$out" ;;
+  1) echo "DRIFT (body differs from $TEMPLATE)" ;;
   *) echo "ERROR"; printf '%s\n' "$out" >&2 ;;
 esac
 exit "$status"

@@ -4,6 +4,7 @@ Shared, stamped shell templates for repos, vendored as a submodule:
 - install scripts
 - Go build and release makefiles
 - GDExtension addon packaging
+- macOS app installers and releases
 - CI workflows
 
 Installers, package scripts, and makefiles are split at a `# ---- end config ----` marker: the repo's
@@ -24,6 +25,13 @@ Workflows and `cliff.toml` are copied byte-identically from their templates.
   version tags. `render-target.sh` handles every Go file;
   `templates/` holds templates and the entry script copied into consumer repos,
   while `utils/` holds the local-install function library.
+- `common/templates/cliff.template.toml` - the shared git-cliff release-notes policy,
+  rendered as `cliff.toml` by both the `go/` and `mac-apps/` renderers.
+- `mac-apps/` - the macOS `.app` domain: an `install.sh` template that downloads a
+  release zip + `.sha256`, verifies checksum, bundle ID and signature, swaps the app into
+  `/Applications` with rollback, and optionally writes a command launcher, plus a
+  `release.yml` workflow (macOS build job, git-cliff notes, GitHub release). Build steps
+  stay repo-owned behind the `scripts/package.sh` contract below.
 - `gdext/` - `package.sh` (stage a Godot addon from `bin/` + addon source and create
   its release zip) and `build.yml` (matrix scons build for macOS/Linux/Windows,
   package, release on tag).
@@ -56,11 +64,24 @@ Then:
   contains the canonical `$RELEASE_NAME-v<VERSION>.zip`; the byte-identical workflow
   uploads that zip and publishes it on tag pushes.
 
+- macOS apps: copy `mac-apps/templates/repo-render-entry.sh` as `render-mac.sh` (a
+  workspace can instead loop over apps calling `mac-apps/render-target.sh`). Each app
+  provides:
+  - `scripts/package.sh VERSION BUILD OUT_DIR` writing `OUT_DIR/<ARCHIVE>.zip` (the
+    `.app` at the top level, e.g. `ditto -c -k --keepParent`) and `<ARCHIVE>.zip.sha256`;
+  - optionally `scripts/test.sh`, run by CI before packaging, and
+    `.github/release-notes.md`, appended to the generated notes;
+  - `install.sh` with its config block (`REPO`, `APP_NAME`, `APP_EXECUTABLE`, `ARCHIVE`,
+    `BUNDLE_ID`, `MIN_MACOS`, `INSTALL_DIR`, `LAUNCHER_NAME`, `REQUIRED_COMMANDS`, and the
+    `pre_replace`/`post_replace`/`on_failure`/`post_install_note` hooks) and the marker.
+  `ARCHIVE` must match the zip name `package.sh` writes. Set `RELEASE_BASE_URL=file:///path/to/dist`
+  to test a rendered installer against a local `package.sh` build.
+
 All entry scripts take `--check` to verify instead of write; use it in a pre-tag
 gate or CI to fail on drift. A fresh clone needs
 `git submodule update --init sh-templates` before rendering.
 
-## Go release notes
+## Release notes (Go and macOS apps)
 
 Version tags are chosen and pushed manually. Release CI uses git-cliff **v2.14.2**
 to generate the checked-out tag's notes and passes them to the GitHub release body.
@@ -68,7 +89,7 @@ It needs the rendered `cliff.toml` committed alongside the workflow, but does no
 commit a `CHANGELOG.md`. Notes are generated outside `dist/`, so they are not an
 extra downloadable asset. Generation errors stop publication.
 
-Edit `go/templates/cliff.template.toml`, then run the renderer to propagate policy
+Edit `common/templates/cliff.template.toml`, then run the renderer to propagate policy
 changes. Notes contain Breaking Changes, Features (`feat:`), Bug Fixes (`fix:`),
 and Performance (`perf:`), with scopes preserved. Breaking changes marked with
 `!` or a `BREAKING CHANGE:` footer are included regardless of type, including their
