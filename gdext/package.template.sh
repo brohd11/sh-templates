@@ -2,7 +2,7 @@
 # This block is the template's own placeholder config. Only what follows the marker is
 # stamped into each repo's package.sh; everything above it is supplied by the target.
 ADDON_SRC="my_addon"            # source folder, copied recursively into the package
-ADDON_DEST="addons/addon_lib"   # parent dir inside the package: build/$ADDON_DEST/$ADDON_SRC
+ADDON_DEST="addons/_lib"        # parent dir inside the package: build/$ADDON_DEST/$ADDON_SRC
 VERSION_FILE="version.cfg"      # file inside ADDON_SRC whose version= line gets stamped; "" to skip
 RELEASE_NAME="my-addon"         # logical release/archive name; independent of the GitHub repo name
 # ---- end config ----
